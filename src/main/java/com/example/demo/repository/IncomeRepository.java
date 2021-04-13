@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface IncomeRepository extends JpaRepository<Income,Integer> {
 
-List<Income> findByFromCard_Id(Integer fromCard_id);
+List<Income> findByToCard_Id(Integer toCard_id);
 }

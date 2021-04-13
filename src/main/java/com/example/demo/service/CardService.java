@@ -149,7 +149,7 @@ public class CardService {
 
 
         List<Outcome> allByFrom_card_idOutcome = outcomeRepository.findByFromCard_Id(cardId);
-        List<Income> byAllFrom_card_id_idIncome = incomeRepository.findByFromCard_Id(cardId);
+        List<Income> byAllFrom_card_id_idIncome = incomeRepository.findByToCard_Id(cardId);
 
 
         return new ApiResponce("Shu userga tegishli bolgan income va outcome lar ",true,allByFrom_card_idOutcome,byAllFrom_card_id_idIncome);
