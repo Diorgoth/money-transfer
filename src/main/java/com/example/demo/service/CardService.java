@@ -12,10 +12,14 @@ import com.example.demo.repository.IncomeRepository;
 import com.example.demo.repository.OutcomeRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
-
 @Service
 public class CardService {
     @Autowired
@@ -26,7 +30,12 @@ public class CardService {
     UserRepository userRepository;
     @Autowired
     OutcomeRepository outcomeRepository;
+    @Autowired
+    AuthService authService;
 
+    User userDetails = (User) SecurityContextHolder.getContext().getAuthentication()
+            .getPrincipal();
+    String username = userDetails.getUsername();
 
 
 
@@ -39,7 +48,7 @@ public class CardService {
         card.setBalance(cardDto.getBalance());
         card.setExpired_date(cardDto.getExpired_date());
         card.setNumber(cardDto.getNumber());
-        card.setUsername(cardDto.getUsername());
+        card.setUsername(username);
 
         Optional<User> optionalUser = userRepository.findById(cardDto.getUserId());
 
@@ -67,14 +76,20 @@ public class CardService {
             return new ApiResponce("Such sender with this card not found",false);
         }
 
-        boolean existsById = cardRepository.existsById(transferDto.getRecipientCardId());
-        if (!existsById){
+        boolean cardidAndUsername = cardRepository.existsByIdAndUser_Email(transferDto.getSenderCardId(), username);//userning usernamei sifatida email alingan
+//sendercard ning id si orqali olingan useremailni tokendagi username email bilan tekshrildi
+        if (!cardidAndUsername){
+            return new ApiResponce("Bu Userda bunday card yoq",false);//CARD shu user ga tegishli ekanligi tekshirilsin.
+        }
+
+        boolean existsByIdRecepient = cardRepository.existsById(transferDto.getRecipientCardId());
+        if (!existsByIdRecepient){
             return new ApiResponce("Such receiver card not found",false);
         }
 
-        Optional<Card> optionalCard = cardRepository.findById(transferDto.getSenderCardId());
+        Optional<Card> optionalCardSender = cardRepository.findById(transferDto.getSenderCardId());
 
-        Card sendercard = optionalCard.get();
+        Card sendercard = optionalCardSender.get();
 
         Double balance = sendercard.getBalance();
 
@@ -88,30 +103,60 @@ public class CardService {
         Double remainingbalance = balance - commitionwithBalance;
 
         sendercard.setBalance(remainingbalance);
-        Optional<Card> optionalCard1 = cardRepository.findById(transferDto.getRecipientCardId());
-        Card recepientcard = optionalCard1.get();
+        Optional<Card> optionalCardRecepient = cardRepository.findById(transferDto.getRecipientCardId());
+        Card recepientcard = optionalCardRecepient.get();
         Double balance1 = recepientcard.getBalance();
         Double editedBalance = balance1 + transferDto.getAmount();
         recepientcard.setBalance(editedBalance);
+        cardRepository.save(optionalCardRecepient.get());
+        cardRepository.save(optionalCardSender.get());
 
 
 
         Income income = new Income();
-        income.setFrom_card_id(cardRepository.getOne(transferDto.getSenderCardId()));
-        income.setTo_card_id(cardRepository.getOne(transferDto.getRecipientCardId()));
+        income.setFromCard(optionalCardSender.get());
+        income.setToCard(optionalCardRecepient.get());
         income.setAmount(transferDto.getAmount());
         incomeRepository.save(income);
 
 
         Outcome outcome = new Outcome();
-        outcome.setFrom_card_id(cardRepository.getOne(transferDto.getSenderCardId()));
-        outcome.setTo_card_id(cardRepository.getOne(transferDto.getRecipientCardId()));
+        outcome.setFromCard(optionalCardSender.get());
+        outcome.setToCard(optionalCardRecepient.get());
         outcome.setCommision(commision);
         outcome.setAmount(transferDto.getAmount());
-        Outcome save = outcomeRepository.save(outcome);
-        return new ApiResponce("Transfer successfully processed", true,save);//foydaluvchi oziga tegishli card tarixi abject sifatida boradi
+         outcomeRepository.save(outcome);
+        return new ApiResponce("Transfer successfully processed", true);
+
 
     }
+
+    public ApiResponce cardHistory(Integer cardId){
+
+        Optional<Card> optionalCard = cardRepository.findById(cardId);
+
+        if (!optionalCard.isPresent()){
+            return new ApiResponce("Bunday card topilmadi",false);
+        }
+
+        Card card = optionalCard.get();
+
+        User user = card.getUser();
+
+        if (!user.getEmail().equals(username)){
+            return new ApiResponce("Bu card Bu userga tegishli emas",false);
+        }
+
+
+        List<Outcome> allByFrom_card_idOutcome = outcomeRepository.findByFromCard_Id(cardId);
+        List<Income> byAllFrom_card_id_idIncome = incomeRepository.findByFromCard_Id(cardId);
+
+
+        return new ApiResponce("Shu userga tegishli bolgan income va outcome lar ",true,allByFrom_card_idOutcome,byAllFrom_card_id_idIncome);
+
+    }
+
+
 
 
 

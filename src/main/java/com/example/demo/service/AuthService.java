@@ -22,6 +22,8 @@ import java.util.UUID;
 @Service
 public class AuthService implements UserDetailsService {
 
+   public static String token;
+
     @Autowired
     UserRepository userRepository;
     @Autowired
@@ -71,7 +73,9 @@ public class AuthService implements UserDetailsService {
 
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDto.getUsername(),
                     loginDto.getPassword()));
-            String token = jwtProvider.generateToken(loginDto.getUsername());
+
+            token = jwtProvider.generateToken(loginDto.getUsername());
+
 
             return new ApiResponce("Token",true,token);
         }catch (BadCredentialsException exception) {
@@ -79,8 +83,6 @@ public class AuthService implements UserDetailsService {
 
         }
     }
-
-
 
 
 

@@ -20,11 +20,11 @@ public class Outcome {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @OneToOne
-    private  Card from_card_id;
+    @ManyToOne
+    private  Card fromCard;
 
-    @OneToOne
-    private Card to_card_id;
+    @ManyToOne
+    private Card toCard;
 
     private  Double   amount;
 
